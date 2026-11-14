@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Money Book</title>
+<meta name="description" content="A simple money in / money out tracker that saves to your browser.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💸</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF2EC; --surface:#FFFFFF; --ink:#16241D; --muted:#5B6A61; --line:#D6DED6;
+  --in:#12775A; --out:#C0412A; --hero:#173328; --hero-ink:#F1F6F0; --hero-muted:#A9C2B3;
+  --primary:#173328; --primary-ink:#F1F6F0; --chip:#E1E8E1; --focus:#2E8C67;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1512; --surface:#16211C; --ink:#E4EDE7; --muted:#97A89E; --line:#29372F;
+    --in:#45C795; --out:#F27D63; --hero:#1D3A2E; --hero-ink:#EEF5EF; --hero-muted:#9DBBA9;
+    --primary:#45C795; --primary-ink:#0E1512; --chip:#22302A; --focus:#6FE0B3;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1512; --surface:#16211C; --ink:#E4EDE7; --muted:#97A89E; --line:#29372F;
+  --in:#45C795; --out:#F27D63; --hero:#1D3A2E; --hero-ink:#EEF5EF; --hero-muted:#9DBBA9;
+  --primary:#45C795; --primary-ink:#0E1512; --chip:#22302A; --focus:#6FE0B3;
+  color-scheme: dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:1rem;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:46rem;margin:0 auto;padding:1.25rem 1rem 3rem}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem}
+.top h1{font-family:var(--display);font-weight:800;font-size:1.5rem;letter-spacing:-0.02em;margin:0}
+.top select{background:var(--surface);border:1px solid var(--line);border-radius:.6rem;padding:.4rem .6rem;font-size:.9rem}
+
+/* Hero */
+.hero{background:var(--hero);color:var(--hero-ink);border-radius:1.25rem;padding:1.25rem 1.25rem 1.4rem}
+.periods{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:1.4rem}
+.periods button{background:transparent;border:1px solid rgba(255,255,255,.18);color:var(--hero-muted);border-radius:999px;padding:.3rem .8rem;font-size:.85rem;cursor:pointer}
+.periods button[aria-pressed="true"]{background:var(--hero-ink);color:var(--hero);border-color:var(--hero-ink);font-weight:600}
+.hero-label{margin:0;color:var(--hero-muted);font-size:.95rem}
+.hero-num{margin:.1rem 0 1rem;font-family:var(--display);font-weight:700;font-size:clamp(2.4rem,9vw,3.6rem);line-height:1.05;letter-spacing:-0.03em}
+.hero-num.neg{color:#FFB4A2}
+.split{display:flex;height:.6rem;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.12);gap:3px}
+.split span{display:block;height:100%;transition:width .4s ease}
+.split .s-in{background:#6FD8A9}
+.split .s-out{background:#FF9A80}
+.legs{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.9rem}
+.legs span{display:flex;align-items:center;gap:.4rem;color:var(--hero-muted);font-size:.85rem}
+.legs span::before{content:"";width:.55rem;height:.55rem;border-radius:2px;background:var(--dot)}
+.legs strong{display:block;font-family:var(--display);font-weight:600;font-size:1.25rem;letter-spacing:-0.01em}
+.legs div:last-child{text-align:right}
+.legs div:last-child span{justify-content:flex-end}
+
+/* Form */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:1rem;padding:1.1rem;margin-top:1rem}
+.panel h2{font-family:var(--display);font-weight:700;font-size:1.15rem;margin:0 0 .9rem;letter-spacing:-0.01em}
+.toggle{display:grid;grid-template-columns:1fr 1fr;background:var(--chip);border-radius:.75rem;padding:.25rem;margin-bottom:.9rem}
+.toggle button{border:0;background:transparent;border-radius:.55rem;padding:.55rem;cursor:pointer;font-weight:500;color:var(--muted)}
+.toggle button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.toggle button[data-type="in"][aria-pressed="true"]{color:var(--in)}
+.toggle button[data-type="out"][aria-pressed="true"]{color:var(--out)}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.fields .wide{grid-column:1/-1}
+label{display:block;font-size:.85rem;color:var(--muted);font-weight:500}
+label input{display:block;width:100%;margin-top:.3rem;background:var(--bg);border:1px solid var(--line);border-radius:.6rem;padding:.6rem .7rem;font-size:1rem;color:var(--ink);min-height:2.75rem}
+#amount{font-family:var(--display);font-size:1.5rem;font-weight:600;letter-spacing:-0.01em}
+.err{color:var(--out);font-size:.88rem;margin:.6rem 0 0;min-height:1.2em}
+.actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem}
+.btn{border:1px solid var(--line);background:transparent;border-radius:.65rem;padding:.65rem 1rem;cursor:pointer;font-weight:600}
+.btn.primary{background:var(--primary);color:var(--primary-ink);border-color:var(--primary);flex:1}
+.btn.danger{color:var(--out);border-color:currentColor}
+.btn:disabled{opacity:.55;cursor:default}
+
+/* Tabs */
+.views{display:flex;gap:1.25rem;margin:1.75rem 0 .75rem;border-bottom:1px solid var(--line)}
+.views button{background:none;border:0;padding:.5rem 0;margin-bottom:-1px;border-bottom:2px solid transparent;cursor:pointer;font-family:var(--display);font-weight:600;font-size:1.1rem;color:var(--muted)}
+.views button[aria-selected="true"]{color:var(--ink);border-color:var(--ink)}
+.chips{display:flex;gap:.4rem;margin-bottom:.75rem;align-items:center;flex-wrap:wrap}
+.chips button{background:var(--chip);border:0;border-radius:999px;padding:.35rem .8rem;font-size:.85rem;cursor:pointer;color:var(--muted)}
+.chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:600}
+.chips .spacer{flex:1}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-size:.85rem;padding:.35rem 0}
+
+/* Entries */
+.day{margin-top:1rem}
+.day h3{font-size:.82rem;color:var(--muted);font-weight:600;margin:0 0 .35rem;display:flex;justify-content:space-between}
+.rows{background:var(--surface);border:1px solid var(--line);border-radius:.9rem;overflow:hidden}
+.row{display:flex;align-items:center;gap:.75rem;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:.75rem .9rem;cursor:pointer}
+.row:first-child{border-top:0}
+.row:hover{background:var(--chip)}
+.row .mark{width:.5rem;align-self:stretch;border-radius:3px;flex:none}
+.row .mark.in{background:var(--in)} .row .mark.out{background:var(--out)}
+.row .what{flex:1;min-width:0}
+.row .cat{font-weight:600;display:block}
+.row .note{color:var(--muted);font-size:.88rem;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .amt{font-family:var(--display);font-weight:600;white-space:nowrap}
+.amt.in{color:var(--in)} .amt.out{color:var(--ink)}
+.row.editing{background:var(--chip)}
+.empty{text-align:center;color:var(--muted);padding:2.5rem 1rem;border:1px dashed var(--line);border-radius:1rem}
+.empty strong{display:block;color:var(--ink);font-family:var(--display);font-size:1.1rem;margin-bottom:.25rem}
+
+/* Insights */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:.9rem;padding:.85rem .9rem}
+.stat span{display:block;color:var(--muted);font-size:.82rem}
+.stat strong{display:block;font-family:var(--display);font-size:1.35rem;font-weight:700;letter-spacing:-0.01em;margin-top:.15rem}
+.stat small{display:block;color:var(--muted);font-size:.8rem;margin-top:.1rem}
+.good{color:var(--in)} .bad{color:var(--out)}
+.block{margin-top:1.4rem}
+.block h3{font-family:var(--display);font-size:1.05rem;font-weight:700;margin:0 0 .6rem}
+.bars{background:var(--surface);border:1px solid var(--line);border-radius:.9rem;padding:.4rem .9rem}
+.bar{padding:.55rem 0;border-top:1px solid var(--line)}
+.bar:first-child{border-top:0}
+.bar-top{display:flex;justify-content:space-between;gap:.75rem;font-size:.92rem}
+.bar-top b{font-weight:600}
+.bar-top em{font-style:normal;color:var(--muted)}
+.track{height:.45rem;background:var(--chip);border-radius:999px;margin-top:.35rem;overflow:hidden}
+.track i{display:block;height:100%;border-radius:999px}
+.chart{background:var(--surface);border:1px solid var(--line);border-radius:.9rem;padding:.9rem;overflow-x:auto}
+.chart svg{display:block;width:100%;min-width:20rem;height:auto}
+.chart .ax{fill:var(--muted);font-size:12px;font-family:var(--body)}
+.chart .grid{stroke:var(--line)}
+.legend{display:flex;gap:1rem;font-size:.82rem;color:var(--muted);margin-top:.4rem}
+.legend span::before{content:"";display:inline-block;width:.6rem;height:.6rem;border-radius:2px;margin-right:.35rem;background:var(--c);vertical-align:-1px}
+.muted-note{color:var(--muted);font-size:.9rem}
+.status{color:var(--muted);font-size:.88rem;text-align:center;margin:1rem 0 0;min-height:1.2em}
+
+@media (min-width:40rem){
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .wrap{padding-top:2rem}
+}
+@media (prefers-reduced-motion:reduce){ .split span{transition:none} }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <h1>Money Book</h1>
+    <select id="currency" aria-label="Currency">
+      <option value="GHS">GH₵ Cedi</option>
+      <option value="USD">$ US Dollar</option>
+      <option value="EUR">€ Euro</option>
+      <option value="GBP">£ Pound</option>
+      <option value="NGN">₦ Naira</option>
+    </select>
+  </header>
+
+  <section class="hero" aria-live="polite">
+    <div class="periods" id="periods">
+      <button data-p="month">This month</button>
+      <button data-p="lastmonth">Last month</button>
+      <button data-p="year">This year</button>
+      <button data-p="all">All time</button>
+    </div>
+    <p class="hero-label" id="heroLabel">Left over this month</p>
+    <p class="hero-num num" id="heroNet">—</p>
+    <div class="split" aria-hidden="true"><span class="s-in" id="splitIn" style="width:50%"></span><span class="s-out" id="splitOut" style="width:50%"></span></div>
+    <div class="legs">
+      <div style="--dot:#6FD8A9"><span>Money in</span><strong class="num" id="heroIn">—</strong></div>
+      <div style="--dot:#FF9A80"><span>Money out</span><strong class="num" id="heroOut">—</strong></div>
+    </div>
+  </section>
+
+  <section class="panel" id="formPanel">
+    <h2 id="formTitle">Add an entry</h2>
+    <div class="toggle" id="typeToggle">
+      <button type="button" data-type="in">Money in</button>
+      <button type="button" data-type="out">Money out</button>
+    </div>
+    <div class="fields">
+      <label class="wide">Amount
+        <input id="amount" inputmode="decimal" autocomplete="off" placeholder="0.00">
+      </label>
+      <label>Category
+        <input id="category" list="catList" autocomplete="off" placeholder="Pick or type">
+      </label>
+      <label>Date
+        <input id="date" type="date">
+      </label>
+      <label class="wide">Note
+        <input id="note" autocomplete="off" placeholder="Optional, e.g. trotro to work">
+      </label>
+    </div>
+    <datalist id="catList"></datalist>
+    <p class="err" id="formErr" role="alert"></p>
+    <div class="actions">
+      <button type="button" class="btn primary" id="saveBtn">Add entry</button>
+      <button type="button" class="btn" id="cancelBtn" hidden>Cancel</button>
+      <button type="button" class="btn danger" id="deleteBtn" hidden>Delete</button>
+    </div>
+  </section>
+
+  <nav class="views" role="tablist">
+    <button role="tab" data-view="entries" aria-selected="true">Entries</button>
+    <button role="tab" data-view="insights" aria-selected="false">Insights</button>
+  </nav>
+
+  <section id="entriesView">
+    <div class="chips" id="filterChips">
+      <button data-f="all" aria-pressed="true">All</button>
+      <button data-f="in">Money in</button>
+      <button data-f="out">Money out</button>
+      <span class="spacer"></span>
+      <button class="linkbtn" id="exportBtn" hidden>Export CSV</button>
+    </div>
+    <div id="entryList"></div>
+  </section>
+
+  <section id="insightsView" hidden></section>
+
+  <p class="status" id="status"></p>
+</main>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const PRESETS = {
+    in: ["Salary","Business","Freelance","Side hustle","Gift","Refund","Other"],
+    out: ["Food","Transport","Rent","Utilities","Data & airtime","Shopping","Health","Family support","Education","Entertainment","Gifts & giving","Other"]
+  };
+  const PERIOD_LABEL = { month:"this month", lastmonth:"last month", year:"this year", all:"across all time" };
+  const PREV_LABEL = { month:"last month", lastmonth:"the month before", year:"last year" };
+
+  const state = { tx: [], settings: { currency: "GHS" }, period: "month", view: "entries", filter: "all", type: "out", editingId: null, saving: false };
+
+  /* ---------- helpers ---------- */
+  const pad = n => String(n).padStart(2, "0");
+  const ymd = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  const todayStr = () => ymd(new Date());
+  const parseYmd = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  const fmtCache = {};
+  function money(n){
+    const c = state.settings.currency || "GHS";
+    try {
+      if (!fmtCache[c]) fmtCache[c] = new Intl.NumberFormat(undefined, { style: "currency", currency: c });
+      return fmtCache[c].format(n);
+    } catch (e) { return c + " " + Number(n).toFixed(2); }
+  }
+  const pct = n => (Math.round(n * 10) / 10).toLocaleString() + "%";
+  const newId = () => "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  function setStatus(msg){ $("#status").textContent = msg || ""; }
+
+  function periodRange(p, offset){
+    offset = offset || 0;
+    const now = new Date();
+    if (p === "month" || p === "lastmonth"){
+      const base = p === "month" ? 0 : -1;
+      const s = new Date(now.getFullYear(), now.getMonth() + base + offset, 1);
+      const e = new Date(s.getFullYear(), s.getMonth() + 1, 0);
+      return { start: ymd(s), end: ymd(e), s, e };
+    }
+    if (p === "year"){
+      const y = now.getFullYear() + offset;
+      return { start: y + "-01-01", end: y + "-12-31", s: new Date(y, 0, 1), e: new Date(y, 11, 31) };
+    }
+    return null;
+  }
+  const inRange = (t, r) => !r || (t.date >= r.start && t.date <= r.end);
+  function totals(list){
+    let i = 0, o = 0;
+    for (const t of list){ if (t.type === "in") i += t.amount; else o += t.amount; }
+    return { i, o, net: i - o };
+  }
+  function daysIn(r, list){
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    if (!r){
+      if (!list.length) return 1;
+      const first = list.reduce((m, t) => t.date < m ? t.date : m, list[0].date);
+      return Math.max(1, Math.round((now - parseYmd(first)) / 864e5) + 1);
+    }
+    const end = r.e < now ? r.e : now;
+    return Math.max(1, Math.round((end - r.s) / 864e5) + 1);
+  }
+  function byCategory(list, type){
+    const m = new Map();
+    for (const t of list) if (t.type === type) m.set(t.category, (m.get(t.category) || 0) + t.amount);
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  }
+
+  /* ---------- storage (localStorage) ---------- */
+  const LOCAL_KEY = "money-book:v1";
+  const store = {
+    load(){
+      try {
+        const raw = localStorage.getItem(LOCAL_KEY);
+        if (raw){
+          const d = JSON.parse(raw);
+          state.tx = Array.isArray(d.tx) ? d.tx : [];
+          state.settings = Object.assign({}, state.settings, d.settings || {});
+        }
+      } catch (e) {
+        setStatus("Your saved entries couldn’t be read from this browser.");
+      }
+    },
+    persist(){
+      try { localStorage.setItem(LOCAL_KEY, JSON.stringify({ tx: state.tx, settings: state.settings })); }
+      catch (e) { throw new Error("storage"); }
+    },
+    async put(id, data){
+      const i = state.tx.findIndex(t => t.id === id);
+      const rec = Object.assign({ id }, data);
+      if (i >= 0) state.tx[i] = rec; else state.tx.push(rec);
+      this.persist(); render();
+    },
+    async remove(id){
+      state.tx = state.tx.filter(t => t.id !== id);
+      this.persist(); render();
+    },
+    async saveSettings(){ this.persist(); }
+  };
+
+  // Keep other open tabs in sync
+  window.addEventListener("storage", e => { if (e.key === LOCAL_KEY){ store.load(); render(); } });
+
+  /* ---------- form ---------- */
+  function setType(type){
+    state.type = type;
+    document.querySelectorAll("#typeToggle button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.type === type)));
+    const used = state.tx.filter(t => t.type === type).map(t => t.category);
+    const all = [...new Set([...PRESETS[type], ...used])];
+    $("#catList").innerHTML = all.map(c => `<option value="${esc(c)}"></option>`).join("");
+  }
+  function resetForm(){
+    state.editingId = null;
+    $("#amount").value = ""; $("#category").value = ""; $("#note").value = "";
+    $("#date").value = todayStr();
+    $("#formTitle").textContent = "Add an entry";
+    $("#saveBtn").textContent = "Add entry";
+    $("#cancelBtn").hidden = true; $("#deleteBtn").hidden = true;
+    $("#formErr").textContent = "";
+    setType(state.type);
+  }
+  function startEdit(id){
+    const t = state.tx.find(x => x.id === id);
+    if (!t) return;
+    state.editingId = id;
+    setType(t.type);
+    $("#amount").value = t.amount;
+    $("#category").value = t.category;
+    $("#date").value = t.date;
+    $("#note").value = t.note || "";
+    $("#formTitle").textContent = "Edit entry";
+    $("#saveBtn").textContent = "Save changes";
+    $("#cancelBtn").hidden = false; $("#deleteBtn").hidden = false;
+    $("#formErr").textContent = "";
+    renderEntries();
+    $("#formPanel").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+    $("#amount").focus({ preventScroll: true });
+  }
+  async function save(){
+    if (state.saving) return;
+    const amt = parseFloat(String($("#amount").value).replace(/[,\s]/g, ""));
+    if (!(amt > 0)){ $("#formErr").textContent = "Enter an amount above zero."; $("#amount").focus(); return; }
+    const date = $("#date").value || todayStr();
+    const existing = state.editingId ? state.tx.find(t => t.id === state.editingId) : null;
+    const rec = {
+      type: state.type,
+      amount: Math.round(amt * 100) / 100,
+      category: $("#category").value.trim() || "Other",
+      date,
+      note: $("#note").value.trim(),
+      createdAt: existing && existing.createdAt ? existing.createdAt : Date.now()
+    };
+    const id = state.editingId || newId();
+    state.saving = true; $("#saveBtn").disabled = true;
+    try {
+      await store.put(id, rec);
+      resetForm();
+    } catch (e) {
+      $("#formErr").textContent = "Couldn’t save that entry. Your browser storage may be full or turned off.";
+    } finally {
+      state.saving = false; $("#saveBtn").disabled = false;
+    }
+  }
+  async function del(){
+    const id = state.editingId;
+    if (!id || !confirm("Delete this entry?")) return;
+    try { await store.remove(id); resetForm(); }
+    catch (e) { $("#formErr").textContent = "Couldn’t delete that entry. Try again."; }
+  }
+
+  /* ---------- render ---------- */
+  function render(){
+    document.querySelectorAll("#periods button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.p === state.period)));
+    $("#currency").value = state.settings.currency;
+    const r = periodRange(state.period);
+    const list = state.tx.filter(t => inRange(t, r));
+    const T = totals(list);
+    const label = PERIOD_LABEL[state.period];
+    $("#heroLabel").textContent = T.net < 0 ? "Overspent " + label : "Left over " + label;
+    const net = $("#heroNet");
+    net.textContent = (T.net < 0 ? "−" : "") + money(Math.abs(T.net));
+    net.classList.toggle("neg", T.net < 0);
+    $("#heroIn").textContent = money(T.i);
+    $("#heroOut").textContent = money(T.o);
+    const sum = T.i + T.o;
+    $("#splitIn").style.width = (sum ? T.i / sum * 100 : 50) + "%";
+    $("#splitOut").style.width = (sum ? T.o / sum * 100 : 50) + "%";
+    if (state.editingId === null) setType(state.type);
+    renderEntries();
+    if (state.view === "insights") renderInsights();
+  }
+
+  function renderEntries(){
+    const r = periodRange(state.period);
+    let list = state.tx.filter(t => inRange(t, r));
+    if (state.filter !== "all") list = list.filter(t => t.type === state.filter);
+    list.sort((a, b) => a.date === b.date ? (b.createdAt || 0) - (a.createdAt || 0) : (a.date < b.date ? 1 : -1));
+    document.querySelectorAll("#filterChips [data-f]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.f === state.filter)));
+    $("#exportBtn").hidden = !state.tx.length || !canExport;
+    const box = $("#entryList");
+    if (!list.length){
+      const none = !state.tx.length;
+      box.innerHTML = `<div class="empty"><strong>${none ? "No entries yet" : "Nothing in this view"}</strong>${none ? "Add your first money in or money out above." : "Try another period or filter."}</div>`;
+      return;
+    }
+    const groups = new Map();
+    for (const t of list){ if (!groups.has(t.date)) groups.set(t.date, []); groups.get(t.date).push(t); }
+    const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric", month: "short", year: (state.period === "all" || state.period === "year") ? "numeric" : undefined });
+    let html = "";
+    for (const [date, items] of groups){
+      const dn = totals(items).net;
+      html += `<div class="day"><h3><span>${esc(dayFmt.format(parseYmd(date)))}</span><span class="num">${dn < 0 ? "−" : "+"}${esc(money(Math.abs(dn)))}</span></h3><div class="rows">`;
+      for (const t of items){
+        html += `<button class="row${t.id === state.editingId ? " editing" : ""}" data-id="${esc(t.id)}" aria-label="Edit ${esc(t.category)} entry">
+          <span class="mark ${t.type}"></span>
+          <span class="what"><span class="cat">${esc(t.category)}</span>${t.note ? `<span class="note">${esc(t.note)}</span>` : ""}</span>
+          <span class="amt num ${t.type}">${t.type === "in" ? "+" : "−"}${esc(money(t.amount))}</span>
+        </button>`;
+      }
+      html += `</div></div>`;
+    }
+    box.innerHTML = html;
+  }
+
+  function barsHtml(rows, total, color){
+    if (!rows.length) return `<p class="muted-note">Nothing recorded for this period.</p>`;
+    const max = rows[0][1];
+    return `<div class="bars">` + rows.map(([cat, amt]) => `
+      <div class="bar">
+        <div class="bar-top"><b>${esc(cat)}</b><span class="num">${esc(money(amt))} <em>${pct(total ? amt / total * 100 : 0)}</em></span></div>
+        <div class="track"><i style="width:${max ? amt / max * 100 : 0}%;background:${color}"></i></div>
+      </div>`).join("") + `</div>`;
+  }
+
+  function trendSvg(){
+    const now = new Date();
+    const months = [];
+    for (let k = 5; k >= 0; k--){
+      const s = new Date(now.getFullYear(), now.getMonth() - k, 1);
+      const e = new Date(s.getFullYear(), s.getMonth() + 1, 0);
+      const T = totals(state.tx.filter(t => t.date >= ymd(s) && t.date <= ymd(e)));
+      months.push({ label: s.toLocaleString(undefined, { month: "short" }), full: s.toLocaleString(undefined, { month: "long", year: "numeric" }), i: T.i, o: T.o });
+    }
+    const W = 600, H = 220, L = 8, B = 28, T0 = 12;
+    const max = Math.max(1, ...months.map(m => Math.max(m.i, m.o)));
+    const gw = (W - L * 2) / 6, bw = Math.min(30, gw * 0.3);
+    const h = v => (H - B - T0) * v / max;
+    let g = "";
+    for (let q = 0; q <= 2; q++){ const y = T0 + (H - B - T0) * q / 2; g += `<line class="grid" x1="${L}" x2="${W - L}" y1="${y}" y2="${y}" stroke-dasharray="${q === 2 ? "0" : "3 4"}"/>`; }
+    months.forEach((m, idx) => {
+      const cx = L + gw * idx + gw / 2;
+      const yb = H - B;
+      g += `<rect x="${cx - bw - 2}" y="${yb - h(m.i)}" width="${bw}" height="${Math.max(0, h(m.i))}" rx="4" fill="var(--in)"><title>${esc(m.full)}: in ${esc(money(m.i))}</title></rect>`;
+      g += `<rect x="${cx + 2}" y="${yb - h(m.o)}" width="${bw}" height="${Math.max(0, h(m.o))}" rx="4" fill="var(--out)"><title>${esc(m.full)}: out ${esc(money(m.o))}</title></rect>`;
+      g += `<text class="ax" x="${cx}" y="${H - 8}" text-anchor="middle">${esc(m.label)}</text>`;
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Money in and out for the last six months">${g}</svg>
+      <div class="legend"><span style="--c:var(--in)">Money in</span><span style="--c:var(--out)">Money out</span><span class="num">Top of scale ${esc(money(max))}</span></div>`;
+  }
+
+  function renderInsights(){
+    const r = periodRange(state.period);
+    const list = state.tx.filter(t => inRange(t, r));
+    const T = totals(list);
+    const days = daysIn(r, list);
+    const outs = list.filter(t => t.type === "out");
+    const biggest = outs.reduce((m, t) => (!m || t.amount > m.amount) ? t : m, null);
+    const spendCats = byCategory(list, "out");
+    const incomeCats = byCategory(list, "in");
+
+    const rate = T.i > 0 ? (T.net / T.i * 100) : null;
+    let compare = `<strong>—</strong><small>No earlier period to compare</small>`;
+    if (state.period !== "all"){
+      const pr = periodRange(state.period, -1);
+      const PT = totals(state.tx.filter(t => inRange(t, pr)));
+      if (PT.o > 0){
+        const ch = (T.o - PT.o) / PT.o * 100;
+        compare = `<strong class="num ${ch > 0 ? "bad" : "good"}">${ch > 0 ? "+" : "−"}${pct(Math.abs(ch))}</strong><small>Than ${PREV_LABEL[state.period]} (${esc(money(PT.o))})</small>`;
+      } else {
+        compare = `<strong>—</strong><small>No spending ${PREV_LABEL[state.period]}</small>`;
+      }
+    }
+
+    $("#insightsView").innerHTML = `
+      <div class="stats">
+        <div class="stat"><span>Kept from income</span><strong class="num ${rate === null ? "" : rate >= 0 ? "good" : "bad"}">${rate === null ? "—" : pct(rate)}</strong><small>${rate === null ? "No money in yet" : rate >= 0 ? "Of what came in" : "More went out than came in"}</small></div>
+        <div class="stat"><span>Average spend a day</span><strong class="num">${esc(money(T.o / days))}</strong><small>Over ${days} day${days === 1 ? "" : "s"}</small></div>
+        <div class="stat"><span>Spending change</span>${compare}</div>
+        <div class="stat"><span>Top spending</span><strong>${spendCats.length ? esc(spendCats[0][0]) : "—"}</strong><small class="num">${spendCats.length ? esc(money(spendCats[0][1])) : "Nothing spent yet"}</small></div>
+        <div class="stat"><span>Biggest expense</span><strong class="num">${biggest ? esc(money(biggest.amount)) : "—"}</strong><small>${biggest ? esc(biggest.category + (biggest.note ? ", " + biggest.note : "")) : "Nothing spent yet"}</small></div>
+        <div class="stat"><span>Entries</span><strong class="num">${list.length}</strong><small>${list.filter(t => t.type === "in").length} in, ${outs.length} out</small></div>
+      </div>
+      <div class="block"><h3>Where your money went</h3>${barsHtml(spendCats, T.o, "var(--out)")}</div>
+      <div class="block"><h3>Where your money came from</h3>${barsHtml(incomeCats, T.i, "var(--in)")}</div>
+      <div class="block"><h3>Last six months</h3><div class="chart">${trendSvg()}</div></div>`;
+  }
+
+  function setView(v){
+    state.view = v;
+    document.querySelectorAll(".views button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.view === v)));
+    $("#entriesView").hidden = v !== "entries";
+    $("#insightsView").hidden = v !== "insights";
+    if (v === "insights") renderInsights();
+  }
+
+  /* ---------- export ---------- */
+  const canExport = true;
+  function csv(){
+    const rows = [["Date","Type","Category","Amount","Currency","Note"]];
+    [...state.tx].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0)
+      .forEach(t => rows.push([t.date, t.type === "in" ? "Money in" : "Money out", t.category, t.amount.toFixed(2), state.settings.currency, t.note || ""]));
+    return rows.map(r => r.map(v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v).join(",")).join("\n");
+  }
+  function exportCsv(){
+    const blob = new Blob([csv()], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "money-book-" + todayStr() + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  /* ---------- events ---------- */
+  $("#periods").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; state.period = b.dataset.p; render(); });
+  $("#typeToggle").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setType(b.dataset.type); });
+  $("#saveBtn").addEventListener("click", save);
+  $("#cancelBtn").addEventListener("click", () => { resetForm(); renderEntries(); });
+  $("#deleteBtn").addEventListener("click", del);
+  ["amount","category","date","note"].forEach(id => $("#" + id).addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); save(); } }));
+  $("#amount").addEventListener("input", () => { $("#formErr").textContent = ""; });
+  $("#entryList").addEventListener("click", e => { const b = e.target.closest(".row"); if (b) startEdit(b.dataset.id); });
+  $("#filterChips").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (!b) return; state.filter = b.dataset.f; renderEntries(); });
+  document.querySelector(".views").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setView(b.dataset.view); });
+  $("#exportBtn").addEventListener("click", exportCsv);
+  $("#currency").addEventListener("change", async e => {
+    state.settings = Object.assign({}, state.settings, { currency: e.target.value });
+    render();
+    try { await store.saveSettings(); } catch (err) { setStatus("Couldn’t save your currency choice."); }
+  });
+
+  /* ---------- start ---------- */
+  store.load();
+  resetForm();
+  render();
+})();
+</script>
+</body>
+</html>
