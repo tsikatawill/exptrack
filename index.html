@@ -92,8 +92,17 @@ button,select,input{touch-action:manipulation;-webkit-tap-highlight-color:transp
 .fields > *{min-width:0}
 .fields .wide{grid-column:1/-1}
 label{display:block;font-size:.85rem;color:var(--muted);font-weight:500}
-label input{display:block;width:100%;max-width:100%;min-width:0;margin-top:.3rem;background:var(--bg);border:1px solid var(--line);border-radius:.6rem;padding:.6rem .7rem;font-size:1rem;color:var(--ink);min-height:2.75rem;-webkit-appearance:none;appearance:none}
+label input,label select{display:block;width:100%;max-width:100%;min-width:0;margin-top:.3rem;background:var(--bg);border:1px solid var(--line);border-radius:.6rem;padding:.6rem .7rem;font-size:1rem;color:var(--ink);min-height:2.75rem;-webkit-appearance:none;appearance:none}
 /* iOS Safari gives date inputs an intrinsic width and centred text; keep them inside their column */
+label select{padding-right:2.2rem;cursor:pointer;text-overflow:ellipsis;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A9990' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right .7rem center;background-size:1rem}
+.newcat{display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;background:var(--chip);border-radius:.75rem;padding:.75rem}
+.newcat label{flex:1 1 12rem;min-width:0}
+.newcat label input{background:var(--surface)}
+.newcat .btn{flex:none;background:var(--surface)}
+.newcat .btn.primary{background:var(--primary)}
+.newcat[hidden]{display:none}
 input[type="date"]{text-align:left;line-height:1.4}
 input[type="date"]::-webkit-date-and-time-value{text-align:left;margin:0}
 input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
@@ -230,16 +239,22 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
         <input id="amount" inputmode="decimal" autocomplete="off" placeholder="0.00">
       </label>
       <label>Category
-        <input id="category" list="catList" autocomplete="off" placeholder="Pick or type">
+        <select id="category"></select>
       </label>
       <label>Date
         <input id="date" type="date">
       </label>
+      <div class="newcat wide" id="newCatRow" hidden>
+        <label><span id="newCatLabel">New category</span>
+          <input id="newCat" maxlength="40" autocomplete="off" placeholder="e.g. Church, Savings">
+        </label>
+        <button type="button" class="btn primary" id="newCatAdd">Add</button>
+        <button type="button" class="btn" id="newCatCancel">Cancel</button>
+      </div>
       <label class="wide">Note
         <input id="note" autocomplete="off" placeholder="Optional, e.g. trotro to work">
       </label>
     </div>
-    <datalist id="catList"></datalist>
     <p class="err" id="formErr" role="alert"></p>
     <div class="actions">
       <button type="button" class="btn primary" id="saveBtn">Add entry</button>
@@ -283,7 +298,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
   const PERIOD_LABEL = { month:"this month", lastmonth:"last month", year:"this year", all:"across all time" };
   const PREV_LABEL = { month:"last month", lastmonth:"the month before", year:"last year" };
 
-  const state = { tx: [], settings: { currency: "GHS" }, period: "month", view: "entries", filter: "all", type: "out", editingId: null, saving: false };
+  const state = { tx: [], settings: { currency: "GHS", categories: { in: [], out: [] } }, period: "month", view: "entries", filter: "all", type: "out", editingId: null, saving: false };
 
   /* ---------- helpers ---------- */
   const pad = n => String(n).padStart(2, "0");
@@ -350,6 +365,9 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
           const d = JSON.parse(raw);
           state.tx = Array.isArray(d.tx) ? d.tx : [];
           state.settings = Object.assign({}, state.settings, d.settings || {});
+          // Older saves have no custom category list yet; fill in an empty one
+          const c = state.settings.categories || {};
+          state.settings.categories = { in: Array.isArray(c.in) ? c.in : [], out: Array.isArray(c.out) ? c.out : [] };
         }
       } catch (e) {
         setStatus("Your saved entries couldn’t be read from this browser.");
@@ -408,12 +426,56 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
   });
 
   /* ---------- form ---------- */
-  function setType(type){
+  const NEW_CAT = "__new__";
+  let prevCat = "";
+  // Presets, then categories you added, then any others already used on entries; "Other" always last
+  function catOptions(type){
+    const custom = state.settings.categories[type] || [];
+    const used = state.tx.filter(t => t.type === type).map(t => t.category);
+    const all = [...new Set([...PRESETS[type], ...custom, ...used])].filter(c => c && c !== "Other");
+    return [...all, "Other"];
+  }
+  function fillCategories(type, selected){
+    const sel = $("#category");
+    const want = selected !== undefined ? selected : sel.value;
+    const opts = catOptions(type);
+    if (selected && !opts.includes(selected)) opts.splice(opts.length - 1, 0, selected);
+    sel.innerHTML = `<option value="">Choose one</option>`
+      + opts.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join("")
+      + `<option value="${NEW_CAT}">+ Add a category…</option>`;
+    sel.value = opts.includes(want) ? want : "";
+    prevCat = sel.value;
+  }
+  function setType(type, selected){
     state.type = type;
     document.querySelectorAll("#typeToggle button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.type === type)));
-    const used = state.tx.filter(t => t.type === type).map(t => t.category);
-    const all = [...new Set([...PRESETS[type], ...used])];
-    $("#catList").innerHTML = all.map(c => `<option value="${esc(c)}"></option>`).join("");
+    fillCategories(type, selected);
+    $("#newCatLabel").textContent = "New " + (type === "in" ? "money in" : "money out") + " category";
+  }
+  function openNewCat(){
+    $("#newCatRow").hidden = false;
+    $("#newCat").value = "";
+    $("#formErr").textContent = "";
+    $("#newCat").focus();
+  }
+  function closeNewCat(){ $("#newCatRow").hidden = true; $("#newCat").value = ""; }
+  async function addCategory(){
+    const name = $("#newCat").value.trim().replace(/\s+/g, " ");
+    if (!name){ $("#formErr").textContent = "Type a name for the new category."; $("#newCat").focus(); return; }
+    const type = state.type;
+    const existing = catOptions(type).find(c => c.toLowerCase() === name.toLowerCase());
+    if (!existing){
+      const before = state.settings;
+      const cats = { in: [...state.settings.categories.in], out: [...state.settings.categories.out] };
+      cats[type].push(name);
+      state.settings = Object.assign({}, state.settings, { categories: cats });
+      try { await store.saveSettings(); }
+      catch (e) { state.settings = before; $("#formErr").textContent = "Couldn’t save that category. Your browser storage may be full or turned off."; return; }
+    }
+    fillCategories(type, existing || name);
+    closeNewCat();
+    $("#formErr").textContent = "";
+    $("#category").focus();
   }
   function resetForm(){
     state.editingId = null;
@@ -423,15 +485,16 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
     $("#saveBtn").textContent = "Add entry";
     $("#cancelBtn").hidden = true; $("#deleteBtn").hidden = true;
     $("#formErr").textContent = "";
-    setType(state.type);
+    closeNewCat();
+    setType(state.type, "");
   }
   function startEdit(id){
     const t = state.tx.find(x => x.id === id);
     if (!t) return;
     state.editingId = id;
-    setType(t.type);
+    closeNewCat();
+    setType(t.type, t.category);
     $("#amount").value = t.amount;
-    $("#category").value = t.category;
     $("#date").value = t.date;
     $("#note").value = t.note || "";
     $("#formTitle").textContent = "Edit entry";
@@ -635,7 +698,17 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
   $("#saveBtn").addEventListener("click", save);
   $("#cancelBtn").addEventListener("click", () => { resetForm(); renderEntries(); });
   $("#deleteBtn").addEventListener("click", del);
-  ["amount","category","date","note"].forEach(id => $("#" + id).addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); save(); } }));
+  $("#category").addEventListener("change", e => {
+    if (e.target.value === NEW_CAT){ e.target.value = prevCat; openNewCat(); }
+    else prevCat = e.target.value;
+  });
+  $("#newCatAdd").addEventListener("click", addCategory);
+  $("#newCatCancel").addEventListener("click", () => { closeNewCat(); $("#formErr").textContent = ""; $("#category").focus(); });
+  $("#newCat").addEventListener("keydown", e => {
+    if (e.key === "Enter"){ e.preventDefault(); addCategory(); }
+    if (e.key === "Escape"){ e.preventDefault(); closeNewCat(); $("#category").focus(); }
+  });
+  ["amount","date","note"].forEach(id => $("#" + id).addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); save(); } }));
   $("#amount").addEventListener("input", () => { $("#formErr").textContent = ""; });
   $("#entryList").addEventListener("click", e => { const b = e.target.closest(".row"); if (b) startEdit(b.dataset.id); });
   $("#filterChips").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (!b) return; state.filter = b.dataset.f; renderEntries(); });
