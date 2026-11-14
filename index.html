@@ -10,7 +10,14 @@
   // Apply the saved theme before first paint to avoid a flash.
   try { var t = localStorage.getItem("money-book:theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
 </script>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💸</text></svg>">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Money Book">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
@@ -97,12 +104,23 @@ label input,label select{display:block;width:100%;max-width:100%;min-width:0;mar
 label select{padding-right:2.2rem;cursor:pointer;text-overflow:ellipsis;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A9990' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right .7rem center;background-size:1rem}
-.newcat{display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;background:var(--chip);border-radius:.75rem;padding:.75rem}
-.newcat label{flex:1 1 12rem;min-width:0}
-.newcat label input{background:var(--surface)}
-.newcat .btn{flex:none;background:var(--surface)}
-.newcat .btn.primary{background:var(--primary)}
-.newcat[hidden]{display:none}
+.catpanel{background:var(--chip);border-radius:.75rem;padding:.75rem}
+.catpanel[hidden]{display:none}
+.catpanel-add{display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap}
+.catpanel-add label{flex:1 1 12rem;min-width:0}
+.catpanel label input{background:var(--surface)}
+.catpanel .btn{flex:none;background:var(--surface)}
+.catpanel .btn.primary{background:var(--primary)}
+.catpanel-h{margin:.9rem 0 .4rem;font-size:.85rem;color:var(--muted);font-weight:500}
+.catlist{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.4rem}
+.catlist li{display:flex;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding-left:.8rem;max-width:100%;min-width:0}
+.catlist li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92rem}
+.catlist button{flex:none;width:2.25rem;height:2.25rem;border:0;background:none;border-radius:999px;cursor:pointer;color:var(--muted);display:grid;place-items:center}
+.catlist button:hover{color:var(--out)}
+.catlist button svg{width:1rem;height:1rem}
+.catlist .none{background:none;border:0;padding:0;color:var(--muted);font-size:.88rem}
+.catpanel-foot{display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-top:.75rem;flex-wrap:wrap}
+.catpanel-foot small{color:var(--muted);font-size:.8rem}
 input[type="date"]{text-align:left;line-height:1.4}
 input[type="date"]::-webkit-date-and-time-value{text-align:left;margin:0}
 input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
@@ -167,6 +185,12 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
 .legend span::before{content:"";display:inline-block;width:.6rem;height:.6rem;border-radius:2px;margin-right:.35rem;background:var(--c);vertical-align:-1px}
 .muted-note{color:var(--muted);font-size:.9rem}
 .status{color:var(--muted);font-size:.88rem;text-align:center;margin:1rem 0 0;min-height:1.2em}
+.data{background:var(--surface);border:1px solid var(--line);border-radius:1rem;padding:1rem 1.1rem;margin-top:1.75rem}
+.data + .data{margin-top:.75rem}
+.data h3{font-family:var(--display);font-size:1.05rem;font-weight:700;margin:0 0 .3rem}
+.data p{margin:0 0 .8rem;color:var(--muted);font-size:.9rem}
+.data-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+.data-actions .btn{flex:1 1 7rem}
 
 .bar-top b{min-width:0;overflow-wrap:anywhere}
 .bar-top span{white-space:nowrap}
@@ -244,12 +268,19 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
       <label>Date
         <input id="date" type="date">
       </label>
-      <div class="newcat wide" id="newCatRow" hidden>
-        <label><span id="newCatLabel">New category</span>
-          <input id="newCat" maxlength="40" autocomplete="off" placeholder="e.g. Church, Savings">
-        </label>
-        <button type="button" class="btn primary" id="newCatAdd">Add</button>
-        <button type="button" class="btn" id="newCatCancel">Cancel</button>
+      <div class="catpanel wide" id="catPanel" hidden>
+        <div class="catpanel-add">
+          <label><span id="newCatLabel">New category</span>
+            <input id="newCat" maxlength="40" autocomplete="off" placeholder="e.g. Church, Savings">
+          </label>
+          <button type="button" class="btn primary" id="newCatAdd">Add</button>
+        </div>
+        <p class="catpanel-h" id="catListLabel">Your categories</p>
+        <ul class="catlist" id="catList"></ul>
+        <div class="catpanel-foot">
+          <small>Built-in categories can’t be removed. Removing one doesn’t change past entries.</small>
+          <button type="button" class="btn" id="catDone">Done</button>
+        </div>
       </div>
       <label class="wide">Note
         <input id="note" autocomplete="off" placeholder="Optional, e.g. trotro to work">
@@ -275,15 +306,30 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
       <button data-f="all" aria-pressed="true">All</button>
       <button data-f="in">Money in</button>
       <button data-f="out">Money out</button>
-      <span class="spacer"></span>
-      <button class="linkbtn" id="exportBtn" hidden>Export CSV</button>
     </div>
     <div id="entryList"></div>
   </section>
 
   <section id="insightsView" hidden></section>
 
-  <p class="status" id="status"></p>
+  <section class="data" id="dataPanel">
+    <h3>Your data</h3>
+    <p>Entries are saved only on this device, in this browser. Back up now and then. Use Restore to bring a backup into another browser or the installed app. It only adds entries and never deletes any.</p>
+    <div class="data-actions">
+      <button type="button" class="btn" id="backupBtn">Back up</button>
+      <button type="button" class="btn" id="restoreBtn">Restore</button>
+      <button type="button" class="btn" id="exportBtn">Export CSV</button>
+      <input type="file" id="restoreFile" accept="application/json,.json" hidden>
+    </div>
+  </section>
+
+  <section class="data" id="installPanel" hidden>
+    <h3>Install the app</h3>
+    <p id="installText"></p>
+    <button type="button" class="btn primary" id="installBtn" hidden>Install Money Book</button>
+  </section>
+
+  <p class="status" id="status" role="status"></p>
   </div>
   </div>
 </main>
@@ -298,7 +344,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
   const PERIOD_LABEL = { month:"this month", lastmonth:"last month", year:"this year", all:"across all time" };
   const PREV_LABEL = { month:"last month", lastmonth:"the month before", year:"last year" };
 
-  const state = { tx: [], settings: { currency: "GHS", categories: { in: [], out: [] } }, period: "month", view: "entries", filter: "all", type: "out", editingId: null, saving: false };
+  const state = { tx: [], settings: { currency: "GHS", categories: { in: [], out: [] }, catsSeeded: true }, period: "month", view: "entries", filter: "all", type: "out", editingId: null, saving: false };
 
   /* ---------- helpers ---------- */
   const pad = n => String(n).padStart(2, "0");
@@ -368,6 +414,9 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
           // Older saves have no custom category list yet; fill in an empty one
           const c = state.settings.categories || {};
           state.settings.categories = { in: Array.isArray(c.in) ? c.in : [], out: Array.isArray(c.out) ? c.out : [] };
+          // One-time: categories typed on older entries join your list so they can be picked or removed.
+          // This is in memory only; it gets saved the next time you change something.
+          if (!(d.settings && d.settings.catsSeeded)){ seedUsedCategories(state.tx); state.settings.catsSeeded = true; }
         }
       } catch (e) {
         setStatus("Your saved entries couldn’t be read from this browser.");
@@ -426,13 +475,13 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
   });
 
   /* ---------- form ---------- */
-  const NEW_CAT = "__new__";
+  const NEW_CAT = "__new__", EDIT_CAT = "__edit__";
   let prevCat = "";
-  // Presets, then categories you added, then any others already used on entries; "Other" always last
+  const sameName = (a, b) => a.toLowerCase() === b.toLowerCase();
+  // Built-in categories, then the ones you added; "Other" always last
   function catOptions(type){
     const custom = state.settings.categories[type] || [];
-    const used = state.tx.filter(t => t.type === type).map(t => t.category);
-    const all = [...new Set([...PRESETS[type], ...custom, ...used])].filter(c => c && c !== "Other");
+    const all = [...new Set([...PRESETS[type], ...custom])].filter(c => c && c !== "Other");
     return [...all, "Other"];
   }
   function fillCategories(type, selected){
@@ -442,7 +491,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
     if (selected && !opts.includes(selected)) opts.splice(opts.length - 1, 0, selected);
     sel.innerHTML = `<option value="">Choose one</option>`
       + opts.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join("")
-      + `<option value="${NEW_CAT}">+ Add a category…</option>`;
+      + `<option value="${NEW_CAT}">+ Add a category…</option>`
+      + `<option value="${EDIT_CAT}">Edit categories…</option>`;
     sel.value = opts.includes(want) ? want : "";
     prevCat = sel.value;
   }
@@ -450,27 +500,68 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
     state.type = type;
     document.querySelectorAll("#typeToggle button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.type === type)));
     fillCategories(type, selected);
-    $("#newCatLabel").textContent = "New " + (type === "in" ? "money in" : "money out") + " category";
+    const kind = type === "in" ? "money in" : "money out";
+    $("#newCatLabel").textContent = "New " + kind + " category";
+    $("#catListLabel").textContent = "Your " + kind + " categories";
+    renderCatList();
   }
-  function openNewCat(){
-    $("#newCatRow").hidden = false;
+  const X_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+  function renderCatList(){
+    const custom = state.settings.categories[state.type] || [];
+    $("#catList").innerHTML = custom.length
+      ? custom.map((c, i) => `<li><span>${esc(c)}</span><button type="button" data-i="${i}" aria-label="Remove ${esc(c)}" title="Remove ${esc(c)}">${X_ICON}</button></li>`).join("")
+      : `<li class="none">None yet. Add one above.</li>`;
+  }
+  function openNewCat(focusInput){
+    $("#catPanel").hidden = false;
     $("#newCat").value = "";
     $("#formErr").textContent = "";
-    $("#newCat").focus();
+    renderCatList();
+    if (focusInput !== false) $("#newCat").focus();
+    else $("#catDone").focus();
   }
-  function closeNewCat(){ $("#newCatRow").hidden = true; $("#newCat").value = ""; }
+  function closeNewCat(){ $("#catPanel").hidden = true; $("#newCat").value = ""; }
+  function seedUsedCategories(list){
+    const cats = { in: [...state.settings.categories.in], out: [...state.settings.categories.out] };
+    for (const t of list){
+      const c = String(t.category || "").trim();
+      if (!c || c === "Other" || (t.type !== "in" && t.type !== "out")) continue;
+      if (![...PRESETS[t.type], ...cats[t.type]].some(x => sameName(x, c))) cats[t.type].push(c);
+    }
+    state.settings = Object.assign({}, state.settings, { categories: cats });
+  }
+  async function saveCategories(cats){
+    const before = state.settings;
+    state.settings = Object.assign({}, state.settings, { categories: cats, catsSeeded: true });
+    try { await store.saveSettings(); return true; }
+    catch (e) { state.settings = before; $("#formErr").textContent = "Couldn’t save your categories. Your browser storage may be full or turned off."; return false; }
+  }
+  async function removeCategory(i){
+    const type = state.type;
+    const name = state.settings.categories[type][i];
+    if (name === undefined) return;
+    const uses = state.tx.filter(t => t.type === type && t.category === name).length;
+    if (uses && !confirm(`Remove “${name}” from your list?\n\n${uses} entr${uses === 1 ? "y uses" : "ies use"} it and will keep it.`)) return;
+    const cats = { in: [...state.settings.categories.in], out: [...state.settings.categories.out] };
+    cats[type].splice(i, 1);
+    if (!(await saveCategories(cats))) return;
+    const sel = $("#category");
+    // While editing, keep the entry's own category selected even if it was just removed
+    fillCategories(type, state.editingId ? sel.value : (sel.value === name ? "" : sel.value));
+    renderCatList();
+    const next = $("#catList button");
+    (next || $("#newCat")).focus();
+    setStatus(`Removed “${name}”.`);
+  }
   async function addCategory(){
     const name = $("#newCat").value.trim().replace(/\s+/g, " ");
     if (!name){ $("#formErr").textContent = "Type a name for the new category."; $("#newCat").focus(); return; }
     const type = state.type;
-    const existing = catOptions(type).find(c => c.toLowerCase() === name.toLowerCase());
+    const existing = catOptions(type).find(c => sameName(c, name));
     if (!existing){
-      const before = state.settings;
       const cats = { in: [...state.settings.categories.in], out: [...state.settings.categories.out] };
       cats[type].push(name);
-      state.settings = Object.assign({}, state.settings, { categories: cats });
-      try { await store.saveSettings(); }
-      catch (e) { state.settings = before; $("#formErr").textContent = "Couldn’t save that category. Your browser storage may be full or turned off."; return; }
+      if (!(await saveCategories(cats))) return;
     }
     fillCategories(type, existing || name);
     closeNewCat();
@@ -565,11 +656,11 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
     if (state.filter !== "all") list = list.filter(t => t.type === state.filter);
     list.sort((a, b) => a.date === b.date ? (b.createdAt || 0) - (a.createdAt || 0) : (a.date < b.date ? 1 : -1));
     document.querySelectorAll("#filterChips [data-f]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.f === state.filter)));
-    $("#exportBtn").hidden = !state.tx.length || !canExport;
+    $("#exportBtn").disabled = $("#backupBtn").disabled = !state.tx.length;
     const box = $("#entryList");
     if (!list.length){
       const none = !state.tx.length;
-      box.innerHTML = `<div class="empty"><strong>${none ? "No entries yet" : "Nothing in this view"}</strong>${none ? "Add your first money in or money out above." : "Try another period or filter."}</div>`;
+      box.innerHTML = `<div class="empty"><strong>${none ? "No entries yet" : "Nothing in this view"}</strong>${none ? (isStandalone() ? "Add your first entry above, or use Restore below to bring in a backup from your browser." : "Add your first money in or money out above.") : "Try another period or filter."}</div>`;
       return;
     }
     const groups = new Map();
@@ -673,23 +764,93 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
   }
 
   /* ---------- export ---------- */
-  const canExport = true;
   function csv(){
     const rows = [["Date","Type","Category","Amount","Currency","Note"]];
     [...state.tx].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0)
       .forEach(t => rows.push([t.date, t.type === "in" ? "Money in" : "Money out", t.category, t.amount.toFixed(2), state.settings.currency, t.note || ""]));
     return rows.map(r => r.map(v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v).join(",")).join("\n");
   }
-  function exportCsv(){
-    const blob = new Blob([csv()], { type: "text/csv;charset=utf-8" });
+  const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isMobile = () => isIOS() || /android/i.test(navigator.userAgent);
+  const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  async function saveFile(text, name, type){
+    const blob = new Blob([text], { type });
+    // On phones (and inside an installed iPhone app, where downloads are unreliable) use the share sheet
+    if (isMobile() && navigator.canShare){
+      try {
+        const file = new File([blob], name, { type });
+        if (navigator.canShare({ files: [file] })){ await navigator.share({ files: [file], title: name }); return true; }
+      } catch (e) { if (e && e.name === "AbortError") return false; }
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = "money-book-" + todayStr() + ".csv";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  }
+  function exportCsv(){ saveFile(csv(), "money-book-" + todayStr() + ".csv", "text/csv;charset=utf-8"); }
+  async function backup(){
+    const data = { app: "money-book", version: 1, exportedAt: new Date().toISOString(), tx: state.tx, settings: state.settings };
+    if (await saveFile(JSON.stringify(data, null, 2), "money-book-backup-" + todayStr() + ".json", "application/json"))
+      setStatus(`Backup of ${state.tx.length} entr${state.tx.length === 1 ? "y" : "ies"} ready. Keep the file somewhere safe.`);
+  }
+  const validTx = t => t && typeof t.id === "string" && t.id && (t.type === "in" || t.type === "out")
+    && typeof t.amount === "number" && isFinite(t.amount) && t.amount > 0
+    && typeof t.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(t.date) && typeof t.category === "string";
+  async function restoreFrom(file){
+    if (!file) return;
+    let d;
+    try { d = JSON.parse(await file.text()); } catch (e) { setStatus("That file isn’t a Money Book backup."); return; }
+    const list = Array.isArray(d) ? d : (d && Array.isArray(d.tx) ? d.tx : null);
+    if (!list){ setStatus("That file isn’t a Money Book backup."); return; }
+    const have = new Set(state.tx.map(t => t.id));
+    const add = list.filter(validTx).filter(t => !have.has(t.id)).map(t => ({
+      id: t.id, type: t.type, amount: Math.round(t.amount * 100) / 100, category: t.category.trim() || "Other",
+      date: t.date, note: typeof t.note === "string" ? t.note : "", createdAt: Number(t.createdAt) || Date.now()
+    }));
+    const skipped = list.length - add.length;
+    const bs = d && d.settings ? d.settings : {};
+    const bc = bs.categories || {};
+    // Categories to bring over: the backup's own list, plus (for older backups without one) those used on its entries
+    const catSource = [...(Array.isArray(bc.in) ? bc.in : []).map(c => ({ type: "in", category: c })), ...(Array.isArray(bc.out) ? bc.out : []).map(c => ({ type: "out", category: c })), ...(bs.catsSeeded ? [] : add)]
+      .filter(x => typeof x.category === "string");
+    const newCats = catSource.filter(x => { const c = x.category.trim(); return c && c !== "Other" && ![...PRESETS[x.type], ...state.settings.categories[x.type]].some(y => sameName(y, c)); });
+    if (!add.length && !newCats.length){ setStatus(`Nothing new in that backup${skipped ? ` (${skipped} entr${skipped === 1 ? "y was" : "ies were"} already here)` : ""}.`); return; }
+    if (!confirm(`Add ${add.length} entr${add.length === 1 ? "y" : "ies"}${newCats.length ? ` and ${newCats.length} categor${newCats.length === 1 ? "y" : "ies"}` : ""} from this backup?${skipped ? `\n${skipped} already here will be skipped.` : ""}\n\nNothing already on this device will be changed or deleted.`)) return;
+    const before = { tx: state.tx, settings: state.settings };
+    const wasEmpty = !state.tx.length;
+    state.tx = [...state.tx, ...add];
+    seedUsedCategories(newCats);
+    if (wasEmpty && d.settings && typeof d.settings.currency === "string") state.settings = Object.assign({}, state.settings, { currency: d.settings.currency });
+    try { store.persist(); }
+    catch (e) { state.tx = before.tx; state.settings = before.settings; setStatus("Couldn’t restore. Your browser storage may be full or turned off."); return; }
+    render();
+    setStatus(`Restored ${add.length} entr${add.length === 1 ? "y" : "ies"}${newCats.length ? ` and ${newCats.length} categor${newCats.length === 1 ? "y" : "ies"}` : ""}.`);
+  }
+
+  /* ---------- install ---------- */
+  let installEvt = null;
+  function showInstall(text, withButton){
+    if (isStandalone()) return;
+    $("#installText").textContent = text;
+    $("#installBtn").hidden = !withButton;
+    $("#installPanel").hidden = false;
+  }
+  window.addEventListener("beforeinstallprompt", e => {
+    e.preventDefault();
+    installEvt = e;
+    showInstall("Put Money Book on your home screen or desktop. It opens like an app and works offline.", true);
+  });
+  window.addEventListener("appinstalled", () => { installEvt = null; $("#installPanel").hidden = true; });
+  $("#installBtn").addEventListener("click", async () => {
+    if (!installEvt) return;
+    installEvt.prompt();
+    try { await installEvt.userChoice; } catch (e) {}
+    installEvt = null; $("#installPanel").hidden = true;
+  });
+  if (isIOS() && !isStandalone()){
+    showInstall("In Safari, tap the Share button, then “Add to Home Screen”. The installed app keeps its own copy of your data, separate from Safari. Tap Back up here first, then Restore inside the app.", false);
   }
 
   /* ---------- events ---------- */
@@ -700,13 +861,15 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
   $("#deleteBtn").addEventListener("click", del);
   $("#category").addEventListener("change", e => {
     if (e.target.value === NEW_CAT){ e.target.value = prevCat; openNewCat(); }
+    else if (e.target.value === EDIT_CAT){ e.target.value = prevCat; openNewCat(false); }
     else prevCat = e.target.value;
   });
   $("#newCatAdd").addEventListener("click", addCategory);
-  $("#newCatCancel").addEventListener("click", () => { closeNewCat(); $("#formErr").textContent = ""; $("#category").focus(); });
+  $("#catDone").addEventListener("click", () => { closeNewCat(); $("#formErr").textContent = ""; $("#category").focus(); });
+  $("#catList").addEventListener("click", e => { const b = e.target.closest("button[data-i]"); if (b) removeCategory(Number(b.dataset.i)); });
+  $("#catPanel").addEventListener("keydown", e => { if (e.key === "Escape"){ e.preventDefault(); closeNewCat(); $("#category").focus(); } });
   $("#newCat").addEventListener("keydown", e => {
     if (e.key === "Enter"){ e.preventDefault(); addCategory(); }
-    if (e.key === "Escape"){ e.preventDefault(); closeNewCat(); $("#category").focus(); }
   });
   ["amount","date","note"].forEach(id => $("#" + id).addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); save(); } }));
   $("#amount").addEventListener("input", () => { $("#formErr").textContent = ""; });
@@ -714,6 +877,9 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
   $("#filterChips").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (!b) return; state.filter = b.dataset.f; renderEntries(); });
   document.querySelector(".views").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setView(b.dataset.view); });
   $("#exportBtn").addEventListener("click", exportCsv);
+  $("#backupBtn").addEventListener("click", backup);
+  $("#restoreBtn").addEventListener("click", () => $("#restoreFile").click());
+  $("#restoreFile").addEventListener("change", e => { restoreFrom(e.target.files[0]); e.target.value = ""; });
   $("#currency").addEventListener("change", async e => {
     state.settings = Object.assign({}, state.settings, { currency: e.target.value });
     render();
@@ -721,6 +887,9 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer}
   });
 
   /* ---------- start ---------- */
+  if ("serviceWorker" in navigator && location.protocol !== "file:"){
+    window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+  }
   store.load();
   paintTheme();
   resetForm();
